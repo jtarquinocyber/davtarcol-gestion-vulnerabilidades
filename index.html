@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#0f172a">
+    <meta name="description" content="Portal local de gestión de vulnerabilidades SentinelRisk">
+    <title>SentinelRisk | Gestión de vulnerabilidades</title>
+    <link rel="stylesheet" href="styles/base.css">
+    <link rel="stylesheet" href="styles/layout.css">
+    <link rel="stylesheet" href="styles/components.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+    <script defer src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js"></script>
+  </head>
+  <body>
+    <main class="login-screen" id="login-screen">
+      <section class="login-card" aria-labelledby="login-title">
+        <a class="brand login-brand" href="#" aria-label="SentinelRisk">
+          <span class="brand-mark"><i data-lucide="shield-check"></i></span>
+          <span class="brand-name">Sentinel<span>Risk</span></span>
+        </a>
+        <p class="eyebrow">PORTAL CORPORATIVO DE SEGURIDAD</p>
+        <h1 id="login-title">Portal SentinelRisk</h1>
+        <p class="login-subtitle">Acceso Seguro</p>
+        <p class="login-description">Inicia sesión con tu identidad corporativa para acceder al centro de gestión de vulnerabilidades.</p>
+        <fieldset class="role-picker">
+          <legend>Selecciona un perfil de prueba</legend>
+          <label class="role-option selected" data-role-option="ANALYST">
+            <input type="radio" name="demo-role" value="ANALYST" checked>
+            <span class="role-option-icon"><i data-lucide="scan-search"></i></span>
+            <span class="role-option-copy"><strong>Analista de Seguridad</strong><small>Importa reportes y actualiza hallazgos</small></span>
+            <i class="role-check" data-lucide="circle-check"></i>
+          </label>
+          <label class="role-option" data-role-option="ADMIN">
+            <input type="radio" name="demo-role" value="ADMIN">
+            <span class="role-option-icon"><i data-lucide="shield-check"></i></span>
+            <span class="role-option-copy"><strong>Administrador de Seguridad</strong><small>Gestión completa y auditoría</small></span>
+            <i class="role-check" data-lucide="circle-check"></i>
+          </label>
+          <label class="role-option" data-role-option="READER">
+            <input type="radio" name="demo-role" value="READER">
+            <span class="role-option-icon"><i data-lucide="eye"></i></span>
+            <span class="role-option-copy"><strong>Lector / Auditor</strong><small>Acceso de solo lectura</small></span>
+            <i class="role-check" data-lucide="circle-check"></i>
+          </label>
+        </fieldset>
+        <button class="primary-button sso-button" id="sso-login"><i data-lucide="key-round"></i> Iniciar sesión con SSO Corporativo</button>
+        <p class="login-error" id="login-error" role="alert" hidden></p>
+        <p class="login-notice"><i data-lucide="info"></i> Demostración local: SSO y permisos simulados; no reemplaza autenticación corporativa.</p>
+        <div class="login-security"><i data-lucide="lock-keyhole"></i> Sesión local protegida para esta pestaña</div>
+      </section>
+    </main>
+
+    <div class="app-shell" id="app-shell" hidden>
+      <aside class="sidebar" id="sidebar">
+        <a class="brand" href="#" aria-label="SentinelRisk inicio">
+          <span class="brand-mark"><i data-lucide="shield-check"></i></span>
+          <span class="brand-name">Sentinel<span>Risk</span></span>
+        </a>
+        <div class="workspace-label">WORKSPACE</div>
+        <nav class="side-nav" aria-label="Navegación principal">
+          <a class="nav-link active" href="#overview"><i data-lucide="layout-dashboard"></i><span>Resumen</span></a>
+          <a class="nav-link" href="#findings"><i data-lucide="bug"></i><span>Vulnerabilidades</span><span class="nav-count" id="sidebar-count">0</span></a>
+          <button class="nav-link" id="sidebar-import"><i data-lucide="file-up"></i><span>Importar archivo</span></button>
+        </nav>
+        <div class="sidebar-bottom">
+          <div class="local-status"><span class="status-pulse"></span><span>Almacenamiento local activo</span></div>
+          <div class="profile">
+            <div class="avatar" id="sidebar-avatar">SR</div>
+            <div class="profile-copy"><strong id="sidebar-username">Security Team</strong><small id="sidebar-email">security@example.com</small></div>
+            <span class="role-badge" id="sidebar-role">Analista</span>
+          </div>
+        </div>
+      </aside>
+
+      <main class="main-area" id="overview">
+        <header class="topbar">
+          <button class="icon-button mobile-menu" id="menu-toggle" aria-label="Abrir navegación"><i data-lucide="menu"></i></button>
+          <div class="breadcrumbs"><span>Workspace</span><i data-lucide="chevron-right"></i><strong>Resumen</strong></div>
+          <div class="topbar-actions">
+            <span class="environment"><span></span> Entorno local</span>
+            <button class="icon-button" id="refresh-button" aria-label="Actualizar datos"><i data-lucide="refresh-cw"></i></button>
+            <button class="primary-button compact" id="top-import"><i data-lucide="plus"></i> Importar hallazgos</button>
+            <button class="secondary-button admin-only" id="audit-button"><i data-lucide="clipboard-list"></i> Auditoría</button>
+            <button class="secondary-button danger-button admin-only" id="clear-data-button"><i data-lucide="database-zap"></i> Vaciar datos</button>
+            <div class="connected-user"><span class="avatar small-avatar" id="topbar-avatar">SR</span><span class="connected-user-copy"><strong id="topbar-username">Security Team</strong><small id="topbar-role" class="role-badge">Analista</small></span></div>
+            <button class="secondary-button logout-button" id="logout-button"><i data-lucide="log-out"></i><span>Cerrar sesión</span></button>
+          </div>
+        </header>
+
+        <section class="page-content">
+          <div class="page-heading">
+            <div>
+              <p class="eyebrow">CENTRO DE OPERACIONES DE SEGURIDAD</p>
+              <h1>Resumen de vulnerabilidades</h1>
+              <p class="subheading">Visibilidad unificada de tus activos y riesgos de seguridad.</p>
+            </div>
+            <div class="last-updated"><i data-lucide="clock-3"></i><span id="last-updated">Sin sincronizaciones</span></div>
+          </div>
+
+          <section class="kpi-grid" aria-label="Indicadores clave">
+            <article class="kpi-card">
+              <div class="kpi-top"><span class="kpi-icon cyan"><i data-lucide="scan-line"></i></span><span class="kpi-label">Vulnerabilidades activas</span><i class="kpi-menu" data-lucide="ellipsis"></i></div>
+              <div class="kpi-value" id="kpi-active">0</div><div class="kpi-foot"><span class="muted">Hallazgos abiertos y en progreso</span></div>
+            </article>
+            <article class="kpi-card">
+              <div class="kpi-top"><span class="kpi-icon red"><i data-lucide="octagon-alert"></i></span><span class="kpi-label">Críticas</span><span class="severity-pill critical">CRÍTICA</span></div>
+              <div class="kpi-value" id="kpi-critical">0</div><div class="kpi-foot"><span class="severity-dot critical-dot"></span><span class="muted">Requieren atención inmediata</span></div>
+            </article>
+            <article class="kpi-card">
+              <div class="kpi-top"><span class="kpi-icon orange"><i data-lucide="triangle-alert"></i></span><span class="kpi-label">Altas</span><span class="severity-pill high">ALTA</span></div>
+              <div class="kpi-value" id="kpi-high">0</div><div class="kpi-foot"><span class="severity-dot high-dot"></span><span class="muted">Prioridad de remediación</span></div>
+            </article>
+            <article class="kpi-card">
+              <div class="kpi-top"><span class="kpi-icon amber"><i data-lucide="shield"></i></span><span class="kpi-label">Medias / Bajas</span><span class="severity-pill low">MEDIA + BAJA</span></div>
+              <div class="kpi-value split-value"><span id="kpi-medium">0</span><span class="value-divider">/</span><span id="kpi-low">0</span></div><div class="kpi-foot"><span class="severity-dot medium-dot"></span><span class="muted">Media</span><span class="severity-dot low-dot"></span><span class="muted">Baja</span></div>
+            </article>
+            <article class="kpi-card remediation-card">
+              <div class="kpi-top"><span class="kpi-icon green"><i data-lucide="circle-check"></i></span><span class="kpi-label">Tasa de remediación</span><span class="trend-icon"><i data-lucide="arrow-up-right"></i></span></div>
+              <div class="kpi-value"><span id="kpi-remediation">0</span><small>%</small></div><div class="progress-track"><span id="remediation-progress"></span></div><div class="kpi-foot"><span class="muted"><strong id="remediated-count">0</strong> hallazgos remediados</span></div>
+            </article>
+          </section>
+
+          <section class="analytics-grid" aria-label="Análisis">
+            <article class="panel chart-panel">
+              <div class="panel-heading"><div><h2>Distribución por severidad</h2><p>Hallazgos activos agrupados por nivel de riesgo</p></div><button class="icon-button subtle" aria-label="Más opciones"><i data-lucide="ellipsis"></i></button></div>
+              <div class="donut-wrap"><div class="chart-canvas"><canvas id="severity-chart" aria-label="Gráfico de dona de vulnerabilidades por severidad"></canvas></div><div class="donut-legend" id="severity-legend"></div></div>
+            </article>
+            <article class="panel chart-panel source-panel">
+              <div class="panel-heading"><div><h2>Hallazgos por herramienta</h2><p>Distribución de hallazgos por origen</p></div><button class="icon-button subtle" aria-label="Más opciones"><i data-lucide="ellipsis"></i></button></div>
+              <div class="source-chart-wrap"><canvas id="source-chart" aria-label="Gráfico de barras por herramienta"></canvas></div>
+              <div class="source-summary" id="source-summary"></div>
+            </article>
+          </section>
+
+          <section class="panel findings-panel" id="findings">
+            <div class="findings-heading">
+              <div><div class="title-with-count"><h2>Hallazgos recientes</h2><span class="result-count" id="results-count">0</span></div><p>Revisa, filtra y administra los hallazgos detectados.</p></div>
+              <button class="secondary-button" id="export-button"><i data-lucide="download"></i> Exportar consolidado</button>
+            </div>
+            <div class="table-toolbar">
+              <label class="search-field"><i data-lucide="search"></i><input id="search-input" type="search" placeholder="Buscar activo o CVE..." autocomplete="off"></label>
+              <label class="select-wrap"><span class="sr-only">Filtrar por severidad</span><select id="severity-filter"><option value="">Todas las severidades</option><option value="CRITICAL">Crítica</option><option value="HIGH">Alta</option><option value="MEDIUM">Media</option><option value="LOW">Baja</option></select><i data-lucide="chevron-down"></i></label>
+              <label class="select-wrap"><span class="sr-only">Filtrar por fuente</span><select id="source-filter"><option value="">Todas las fuentes</option><option value="FORTIFY">Fortify</option><option value="NEXUS_IQ">Nexus IQ</option><option value="QUALYS">Qualys</option></select><i data-lucide="chevron-down"></i></label>
+            </div>
+            <div class="table-scroll">
+              <table>
+                <thead><tr><th>Hallazgo</th><th>Activo</th><th>Severidad</th><th>Fuente</th><th>Estado</th><th>Detectado</th><th><span class="sr-only">Acciones</span></th></tr></thead>
+                <tbody id="findings-body"></tbody>
+              </table>
+              <div class="empty-state" id="empty-state"><span class="empty-icon"><i data-lucide="shield-check"></i></span><h3>No hay hallazgos todavía</h3><p>Importa un reporte CSV o XLSX de Fortify, Nexus IQ o Qualys para comenzar.</p><button class="secondary-button" id="empty-import"><i data-lucide="file-up"></i> Importar un archivo</button></div>
+            </div>
+            <div class="table-footer"><span id="page-summary">Mostrando 0–0 de 0</span><div class="pagination"><label>Filas por página<select id="page-size"><option value="10">10</option><option value="25">25</option><option value="50">50</option></select></label><button class="icon-button page-button" id="prev-page" aria-label="Página anterior" disabled><i data-lucide="chevron-left"></i></button><span id="page-indicator">1 / 1</span><button class="icon-button page-button" id="next-page" aria-label="Página siguiente" disabled><i data-lucide="chevron-right"></i></button></div></div>
+          </section>
+          <footer class="page-footer"><span><i data-lucide="lock-keyhole"></i> Tus datos permanecen en este dispositivo</span><span>SentinelRisk MVP <span class="footer-divider">·</span> v1.0</span></footer>
+        </section>
+      </main>
+    </div>
+
+    <dialog class="upload-dialog" id="upload-dialog" aria-labelledby="upload-title">
+      <div class="dialog-header"><div><p class="eyebrow">INGESTA DE DATOS</p><h2 id="upload-title">Importar hallazgos</h2></div><button class="icon-button" id="close-dialog" aria-label="Cerrar"><i data-lucide="x"></i></button></div>
+      <p class="dialog-description">Carga un reporte exportado desde Fortify, Nexus IQ o Qualys. El archivo se procesa localmente en tu navegador.</p>
+      <div class="drop-zone" id="drop-zone" tabindex="0" role="button" aria-label="Selecciona o arrastra un archivo CSV o XLSX">
+        <input id="file-input" type="file" accept=".csv,.xlsx,.xls" hidden>
+        <span class="upload-icon"><i data-lucide="upload-cloud"></i></span><strong>Arrastra tu archivo aquí</strong><span>o <button type="button" class="text-button" id="browse-button">explora tus archivos</button></span><small>Formatos compatibles: CSV, XLSX (máx. 20 MB)</small>
+      </div>
+      <div class="upload-progress" id="upload-progress" hidden><div class="progress-copy"><span id="progress-label">Procesando archivo...</span><span id="progress-value">0%</span></div><div class="progress-track"><span id="progress-bar"></span></div></div>
+      <div class="dialog-footer"><span><i data-lucide="info"></i> Los duplicados se actualizarán automáticamente.</span><button class="secondary-button" id="cancel-upload">Cancelar</button></div>
+    </dialog>
+    <dialog class="audit-dialog" id="audit-dialog" aria-labelledby="audit-title">
+      <div class="dialog-header"><div><p class="eyebrow">ADMINISTRACIÓN</p><h2 id="audit-title">Auditoría del sistema</h2></div><button class="icon-button" id="close-audit" aria-label="Cerrar auditoría"><i data-lucide="x"></i></button></div>
+      <p class="dialog-description">Registro local de actividad de SentinelRisk en este navegador.</p>
+      <div class="audit-list" id="audit-list"></div>
+      <div class="dialog-footer"><span><i data-lucide="hard-drive"></i> Auditoría local de demostración</span><button class="secondary-button" id="close-audit-footer">Cerrar</button></div>
+    </dialog>
+    <div class="toast-region" id="toast-region" role="status" aria-live="polite"></div>
+    <script type="module" src="js/app.js"></script>
+  </body>
+</html>
